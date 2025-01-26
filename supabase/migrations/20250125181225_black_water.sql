@@ -13,6 +13,9 @@
       - `billing_date` (integer, 1-31)
       - `category` (text)
       - `reminder_days` (integer)
+      - `is_shared` (boolean)
+      - `total_amount` (decimal)
+      - `shared_with` (integer)
       - `created_at` (timestamp)
       - `updated_at` (timestamp)
 
@@ -32,6 +35,9 @@ CREATE TABLE subscriptions (
   billing_date integer NOT NULL CHECK (billing_date BETWEEN 1 AND 31),
   category text NOT NULL,
   reminder_days integer DEFAULT 3,
+  is_shared boolean NOT NULL DEFAULT false,
+  total_amount decimal(10,2),
+  shared_with integer,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );

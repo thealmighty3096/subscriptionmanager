@@ -35,7 +35,10 @@ export default function AddSubscription() {
     billingFrequency: 'monthly',
     billingDate: '1',
     category: 'Streaming',
-    reminderDays: '3'
+    reminderDays: '3',
+    isShared: false,
+    totalAmount: '',
+    sharedWith: '2'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,10 +51,15 @@ export default function AddSubscription() {
     setLoading(true);
     try {
       // Validate amount
-      const inputAmount = parseFloat(formData.amount);
+      const inputAmount = parseFloat(formData.isShared ? formData.totalAmount : formData.amount);
       if (isNaN(inputAmount) || inputAmount <= 0) {
         throw new Error('Please enter a valid amount');
       }
+
+      // Calculate share amount if shared
+      const actualAmount = formData.isShared 
+        ? inputAmount / parseInt(formData.sharedWith)
+        : inputAmount;
 
       // Validate start date
       if (!formData.startDate) {
@@ -63,20 +71,21 @@ export default function AddSubscription() {
         throw new Error('Invalid billing frequency');
       }
 
-      // Calculate monthly amount
-      const monthlyAmount = inputAmount / frequency.months;
+      const monthlyAmount = actualAmount / frequency.months;
 
-      // Log the data being sent to Supabase
       const subscriptionData = {
         user_id: user.id,
         name: formData.name.trim(),
         amount: monthlyAmount,
-        actual_amount: inputAmount,
+        actual_amount: actualAmount,
         billing_frequency: formData.billingFrequency,
         start_date: formData.startDate,
         billing_date: parseInt(formData.billingDate),
         category: formData.category,
-        reminder_days: parseInt(formData.reminderDays)
+        reminder_days: parseInt(formData.reminderDays),
+        is_shared: formData.isShared,
+        total_amount: formData.isShared ? inputAmount : null,
+        shared_with: formData.isShared ? parseInt(formData.sharedWith) : null
       };
       
       console.log('Sending data to Supabase:', subscriptionData);
@@ -144,51 +153,106 @@ export default function AddSubscription() {
           </div>
 
           <div>
-            <label htmlFor="billingFrequency" className="block text-sm font-medium text-gray-700">
-              Billing Frequency
-            </label>
-            <select
-              id="billingFrequency"
-              name="billingFrequency"
-              required
-              value={formData.billingFrequency}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
-            >
-              {billingFrequencies.map(frequency => (
-                <option key={frequency.id} value={frequency.id}>
-                  {frequency.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between">
+              <label htmlFor="isShared" className="text-sm font-medium text-gray-700">
+                Is this a shared subscription?
+              </label>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, isShared: !prev.isShared }))}
+                className={`
+                  relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer 
+                  transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                  ${formData.isShared ? 'bg-indigo-600' : 'bg-gray-200'}
+                `}
+              >
+                <span className={`
+                  pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 
+                  transition ease-in-out duration-200
+                  ${formData.isShared ? 'translate-x-5' : 'translate-x-0'}
+                `} />
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-              {formData.billingFrequency === 'monthly' ? 'Monthly Amount' : `Amount per ${formData.billingFrequency.replace('-', ' ')}`}
-            </label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 sm:text-sm">₹</span>
+          {formData.isShared ? (
+            <>
+              <div>
+                <label htmlFor="totalAmount" className="block text-sm font-medium text-gray-700">
+                  Total {formData.billingFrequency === 'monthly' ? 'Monthly Amount' : `Amount per ${formData.billingFrequency.replace('-', ' ')}`}
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-sm">₹</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="totalAmount"
+                    name="totalAmount"
+                    required
+                    value={formData.totalAmount}
+                    onChange={handleChange}
+                    className="block w-full pl-7 rounded-md border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
-              <input
-                type="number"
-                step="0.01"
-                id="amount"
-                name="amount"
-                required
-                value={formData.amount}
-                onChange={handleChange}
-                className="block w-full pl-7 rounded-md border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
-                placeholder="0.00"
-              />
+
+              <div>
+                <label htmlFor="sharedWith" className="block text-sm font-medium text-gray-700">
+                  Shared Among (number of people)
+                </label>
+                <input
+                  type="number"
+                  min="2"
+                  id="sharedWith"
+                  name="sharedWith"
+                  required
+                  value={formData.sharedWith}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                />
+                {formData.totalAmount && formData.sharedWith && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Your share: {formatIndianCurrency(parseFloat(formData.totalAmount) / parseInt(formData.sharedWith))}
+                    {formData.billingFrequency !== 'monthly' && (
+                      <span className="block text-gray-500">
+                        Monthly equivalent: {formatIndianCurrency((parseFloat(formData.totalAmount) / parseInt(formData.sharedWith)) / (billingFrequencies.find(f => f.id === formData.billingFrequency)?.months || 1))}
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div>
+              <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
+                {formData.billingFrequency === 'monthly' ? 'Monthly Amount' : `Amount per ${formData.billingFrequency.replace('-', ' ')}`}
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 sm:text-sm">₹</span>
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  id="amount"
+                  name="amount"
+                  required
+                  value={formData.amount}
+                  onChange={handleChange}
+                  className="block w-full pl-7 rounded-md border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                  placeholder="0.00"
+                />
+              </div>
+              {formData.billingFrequency !== 'monthly' && formData.amount && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Monthly equivalent: {formatIndianCurrency(parseFloat(formData.amount) / (billingFrequencies.find(f => f.id === formData.billingFrequency)?.months || 1))}
+                </p>
+              )}
             </div>
-            {formData.billingFrequency !== 'monthly' && formData.amount && (
-              <p className="mt-1 text-sm text-gray-500">
-                Monthly equivalent: {formatIndianCurrency(parseFloat(formData.amount) / (billingFrequencies.find(f => f.id === formData.billingFrequency)?.months || 1))}
-              </p>
-            )}
-          </div>
+          )}
 
           <div>
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
