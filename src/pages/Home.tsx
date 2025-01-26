@@ -52,12 +52,26 @@ export default function Home() {
     }
   };
 
-  const calculateNextBillingDate = (billingDate: number) => {
+  const calculateNextBillingDate = (subscription: Subscription) => {
+    const { billing_date, billing_frequency, start_date } = subscription;
     const today = new Date();
-    let nextBilling = new Date(today.getFullYear(), today.getMonth(), billingDate);
+    const startDate = new Date(start_date);
     
-    if (nextBilling < today) {
-      nextBilling = new Date(today.getFullYear(), today.getMonth() + 1, billingDate);
+    // Get months to add based on frequency
+    const frequencyMonths = {
+      'monthly': 1,
+      'quarterly': 3,
+      'half-yearly': 6,
+      'yearly': 12
+    }[billing_frequency] || 1;
+
+    // Find the next billing date
+    let nextBilling = new Date(startDate);
+    nextBilling.setDate(billing_date);
+
+    // Keep adding frequency months until we find a future date
+    while (nextBilling <= today) {
+      nextBilling.setMonth(nextBilling.getMonth() + frequencyMonths);
     }
     
     return nextBilling;
@@ -70,7 +84,7 @@ export default function Home() {
     const upcoming = subscriptions
       .map(sub => ({
         ...sub,
-        nextBilling: calculateNextBillingDate(sub.billing_date)
+        nextBilling: calculateNextBillingDate(sub)
       }))
       .sort((a, b) => a.nextBilling.getTime() - b.nextBilling.getTime());
     
@@ -142,7 +156,10 @@ export default function Home() {
                   Due on {format(nextDue.nextBilling, 'MMMM d, yyyy')}
                 </p>
                 <p className="mt-2 text-lg font-semibold text-indigo-600">
-                  {nextDue?.amount ? formatIndianCurrency(nextDue.amount) : formatIndianCurrency(0)}
+                  {formatIndianCurrency(nextDue.actual_amount)}
+                  <span className="text-sm text-gray-500 ml-1">
+                    ({getBillingFrequencyLabel(nextDue.billing_frequency).toLowerCase()})
+                  </span>
                 </p>
               </div>
             ) : (
@@ -197,7 +214,7 @@ export default function Home() {
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
               <ul className="divide-y divide-gray-200">
                 {subscriptions.map((subscription) => {
-                  const nextBilling = calculateNextBillingDate(subscription.billing_date);
+                  const nextBilling = calculateNextBillingDate(subscription);
                   const daysUntilBilling = Math.ceil(
                     (nextBilling.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
                   );
@@ -211,23 +228,27 @@ export default function Home() {
                               {subscription.name}
                             </p>
                             <p className="mt-1 text-sm text-gray-600">
-                              Bills on day {subscription.billing_date} of each month
+                              Bills {getBillingFrequencyLabel(subscription.billing_frequency).toLowerCase()} on day {subscription.billing_date}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-lg font-semibold text-gray-900">
-                              {formatIndianCurrency(subscription.actual_amount || 0)}
+                              {formatIndianCurrency(subscription.actual_amount)}
                               <span className="text-sm text-gray-500 ml-1">
-                                per {getBillingFrequencyLabel(subscription.billing_frequency || 'monthly').toLowerCase()}
+                                per {getBillingFrequencyLabel(subscription.billing_frequency).toLowerCase()}
                               </span>
                             </p>
                             {subscription.billing_frequency !== 'monthly' && (
                               <p className="text-sm text-gray-500">
-                                ({formatIndianCurrency(subscription.amount || 0)} monthly)
+                                (≈{formatIndianCurrency(subscription.amount)} monthly)
                               </p>
                             )}
                             <p className="mt-1 text-sm text-gray-600">
-                              Next billing in {daysUntilBilling} days
+                              Next payment on {format(nextBilling, 'MMM d, yyyy')}
+                              <br />
+                              <span className="text-xs text-gray-500">
+                                ({daysUntilBilling} days away)
+                              </span>
                             </p>
                           </div>
                         </div>
