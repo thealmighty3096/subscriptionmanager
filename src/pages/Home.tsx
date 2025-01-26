@@ -221,7 +221,7 @@ export default function Home() {
 
                   return (
                     <li key={subscription.id}>
-                      <div className="px-4 py-4 sm:px-6">
+                      <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/edit-subscription/${subscription.id}`)}>
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-lg font-medium text-indigo-600 truncate">

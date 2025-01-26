@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
 import AddSubscription from './pages/AddSubscription';
+import EditSubscription from './pages/EditSubscription';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 class ErrorBoundary extends React.Component<
@@ -90,6 +91,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/edit-subscription/:id"
+                element={
+                  <ProtectedRoute>
+                    <EditSubscription />
                   </ProtectedRoute>
                 }
               />
